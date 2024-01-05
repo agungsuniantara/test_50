@@ -8,11 +8,14 @@ export default async function middleware(
     // If the request is to the docs subdirectory
     if (/^\/docs/.test(urlObject.pathname)) {
       // Then Proxy to Mintlify
-      const DOCS_URL = 'mindseat.mintlify.dev';
+      const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL || '';
       const CUSTOM_URL = process.env.NEXT_PUBLIC_CUSTOM_URL || "";
 
       let url = new URL(request.url);
       url.hostname = DOCS_URL;
+
+      console.log(DOCS_URL);
+
 
       let proxyRequest = new Request(url, request);
 
