@@ -9,7 +9,7 @@ export default async function middleware(
     if (/^\/docs/.test(urlObject.pathname)) {
       // Then Proxy to Mintlify
       const DOCS_URL = 'mindseat.mintlify.dev';
-      const CUSTOM_URL = 'withcoldsire.com';
+      const CUSTOM_URL = process.env.NEXT_PUBLIC_CUSTOM_URL || "";
 
       let url = new URL(request.url);
       url.hostname = DOCS_URL;
