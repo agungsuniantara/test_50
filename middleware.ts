@@ -1,43 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export default async function middleware(request: NextRequest) {
-  const urlObject = new URL(request.url);
-  const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL || '';
-  const CUSTOM_URL = process.env.NEXT_PUBLIC_CUSTOM_URL || "";
+  const pathname = request.nextUrl.pathname;
 
-  // Check if the request is for /docs or for assets under /docs
-  if (urlObject.pathname.startsWith('/docs')) {
-    // Rewrite the request to the external documentation site
-    urlObject.hostname = DOCS_URL;
-    urlObject.protocol = 'https';
+  if (pathname.startsWith('/docs')) {
+    const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL || 'mindseat.mintlify.app';
+    const CUSTOM_URL = process.env.NEXT_PUBLIC_CUSTOM_URL || 'localhost:3000';
 
-    // Create a new fetch request with the updated URL
-    const proxyRequest = new Request(urlObject.toString(), {
-      headers: request.headers,
+    // Create a new URL object with the DOCS_URL as the hostname
+    const proxyUrl = new URL(request.url);
+    proxyUrl.hostname = DOCS_URL;
+    proxyUrl.protocol = 'https'; // Use HTTPS protocol
+
+    // Create a new fetch request to the proxy URL
+    const proxyRequest = new Request(proxyUrl.toString(), {
       method: request.method,
-      body: request.method !== 'GET' ? await request.text() : undefined,
+      headers: request.headers,
+      body: request.method !== 'GET' ? await request.arrayBuffer() : undefined,
     });
 
     // Fetch the proxied URL
     const response = await fetch(proxyRequest);
 
-    // If the response is OK, return it directly
+    // If the response is OK, modify it to replace asset paths
     if (response.ok) {
-      return response;
+      let body = await response.text();
+
+      // Replace all instances of CUSTOM_URL with DOCS_URL in the response body
+      body = body.replace(new RegExp(CUSTOM_URL, 'g'), DOCS_URL);
+
+      // Return a new response with the modified body
+      return new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
     }
 
-    // If the response is not OK (e.g., a 404 for an asset), return a custom response
-    // or handle it in a specific way
-    if (response.status === 404) {
-      // Handle 404 for assets, potentially by serving a default asset or logging
-      console.error(`Asset not found at ${urlObject.toString()}`);
-      // Return a default asset or a custom 404 response here if necessary
-    }
-
-    // Return the original response for all other cases
+    // If the response is not OK, return it as is
     return response;
   }
 
-  // For all other paths, return the response as usual
+  // If not visiting /docs, return a response as usual
   return NextResponse.next();
 }
