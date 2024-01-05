@@ -14,9 +14,6 @@ export default async function middleware(
       let url = new URL(request.url);
       url.hostname = DOCS_URL;
 
-      console.log(DOCS_URL);
-
-
       let proxyRequest = new Request(url, request);
 
       proxyRequest.headers.set('Host', DOCS_URL);
