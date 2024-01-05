@@ -1,46 +1,43 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export default async function middleware(request: NextRequest) {
-  try {
-    const urlObject = new URL(request.url);
-    // If the request is to the docs subdirectory
-    if (/^\/docs/.test(urlObject.pathname)) {
-      // Then Proxy to Mintlify
-      const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL || '';
-      const CUSTOM_URL = process.env.NEXT_PUBLIC_CUSTOM_URL || "";
+  const urlObject = new URL(request.url);
+  const DOCS_URL = process.env.NEXT_PUBLIC_DOCS_URL || '';
+  const CUSTOM_URL = process.env.NEXT_PUBLIC_CUSTOM_URL || "";
 
-      let url = new URL(request.url);
-      url.hostname = DOCS_URL;
+  // Check if the request is for /docs or for assets under /docs
+  if (urlObject.pathname.startsWith('/docs')) {
+    // Rewrite the request to the external documentation site
+    urlObject.hostname = DOCS_URL;
+    urlObject.protocol = 'https';
 
-      let proxyRequest = new Request(url, request);
+    // Create a new fetch request with the updated URL
+    const proxyRequest = new Request(urlObject.toString(), {
+      headers: request.headers,
+      method: request.method,
+      body: request.method !== 'GET' ? await request.text() : undefined,
+    });
 
-      proxyRequest.headers.set('Host', DOCS_URL);
-      proxyRequest.headers.set('X-Forwarded-Host', CUSTOM_URL);
-      proxyRequest.headers.set('X-Forwarded-Proto', 'https');
+    // Fetch the proxied URL
+    const response = await fetch(proxyRequest);
 
-      const response = await fetch(proxyRequest);
-
-      // Modify the response's URL for static assets
-      if (response.ok) {
-        const text = await response.text();
-        const modifiedText = text.replace(
-          new RegExp(`http://${CUSTOM_URL}/_next/`, 'g'),
-          `https://${DOCS_URL}/_next/`
-        );
-        return new Response(modifiedText, {
-          ...response,
-          headers: {
-            ...response.headers,
-            'Content-Security-Policy': `default-src 'self' ${DOCS_URL}`,
-          },
-        });
-      }
-
+    // If the response is OK, return it directly
+    if (response.ok) {
       return response;
     }
-  } catch (error) {
-    console.log(error);
+
+    // If the response is not OK (e.g., a 404 for an asset), return a custom response
+    // or handle it in a specific way
+    if (response.status === 404) {
+      // Handle 404 for assets, potentially by serving a default asset or logging
+      console.error(`Asset not found at ${urlObject.toString()}`);
+      // Return a default asset or a custom 404 response here if necessary
+    }
+
+    // Return the original response for all other cases
+    return response;
   }
 
-  return await fetch(request);
+  // For all other paths, return the response as usual
+  return NextResponse.next();
 }
