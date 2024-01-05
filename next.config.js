@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  assetPrefix: "*"
+  assetPrefix: "https://mindseat.mintlify.app"
 }
 
 module.exports = nextConfig
