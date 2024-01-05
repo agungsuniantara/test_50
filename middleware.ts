@@ -28,14 +28,21 @@ export default async function middleware(request: NextRequest) {
       let body = await response.text();
 
       // Replace all instances of CUSTOM_URL with DOCS_URL in the response body
-      body = body.replace(new RegExp(CUSTOM_URL, 'g'), DOCS_URL);
+      body = body.replace(new RegExp(`https://${CUSTOM_URL}`, 'g'), `https://${DOCS_URL}`);
+      body = body.replace(new RegExp(`http://${CUSTOM_URL}`, 'g'), `https://${DOCS_URL}`);
 
-      // Return a new response with the modified body
-      return new Response(body, {
+      // Create a new response with the modified body
+      const newResponse = new Response(body, {
         status: response.status,
         statusText: response.statusText,
         headers: response.headers,
       });
+
+      // Set the base URL in the headers to the DOCS_URL
+      newResponse.headers.set('Content-Base', `https://${DOCS_URL}`);
+      newResponse.headers.set('Base', `https://${DOCS_URL}`);
+
+      return newResponse;
     }
 
     // If the response is not OK, return it as is
