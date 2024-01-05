@@ -27,7 +27,13 @@ export default async function middleware(request: NextRequest) {
           new RegExp(`http://${CUSTOM_URL}/_next/`, 'g'),
           `https://${DOCS_URL}/_next/`
         );
-        return new Response(modifiedText, response);
+        return new Response(modifiedText, {
+          ...response,
+          headers: {
+            ...response.headers,
+            'Content-Security-Policy': `default-src 'self' ${DOCS_URL}`,
+          },
+        });
       }
 
       return response;
